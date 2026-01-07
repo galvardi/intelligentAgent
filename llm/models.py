@@ -1,6 +1,7 @@
 """Models for LLM responses."""
 
 import json
+from openai.types.completion_usage import CompletionUsage
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any
 from openai.types.chat import ChatCompletion
@@ -12,6 +13,7 @@ class LLMResponse(BaseModel):
     
     content: Optional[str] = Field(None, description="Text content of the response")
     tool_calls: Optional[List[ToolCall]] = Field(None, description="Tool calls requested by the LLM")
+    context_length: int = Field(None, description="number of tokens used in the prompt")
     finish_reason: str = Field(..., description="Reason the model stopped generating")
     
     @property
@@ -47,6 +49,7 @@ class LLMResponse(BaseModel):
         return cls(
             content=message.content,
             tool_calls=tool_calls,
+            usage=response.usage.prompt_tokens,
             finish_reason=choice.finish_reason
         )
 

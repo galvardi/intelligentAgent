@@ -19,7 +19,7 @@ console = Console()
 
 
 def print_banner():
-    """Print welcome banner."""
+    """Print welcome banner"""
     banner = """
     # 🤖 Intelligent Agent
     

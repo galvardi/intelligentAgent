@@ -2,10 +2,11 @@
 
 from typing import List
 from intelligentAgent.agents.base import BaseAgent
+from intelligentAgent.agents.summarizer import SummarizerAgent
 from intelligentAgent.llm.client import LLMClient
 from intelligentAgent.llm.models import LLMResponse
 from intelligentAgent.tools.base import BaseTool
-from intelligentAgent.schemas.messages import Message, ToolCall
+from intelligentAgent.schemas.messages import Message, ToolCall, ReActLoop
 from intelligentAgent.schemas.responses import AgentResponse, ToolResult
 from intelligentAgent.prompts.react import REACT_SYSTEM_PROMPT
 from intelligentAgent.config import AgentConfig
@@ -46,6 +47,16 @@ class ReActAgent(BaseAgent):
         super().__init__(llm_client, tools, config)
         self._max_iterations = max_iterations
         self._verbose = verbose
+        self._loops: List[ReActLoop] = []
+        self._loop_counter = 0  # Track total loop iterations across conversation
+        self._current_context_length = 0
+        
+        # Compaction thresholds from config
+        self._compact_after_loops = config.compact_after_loops if config else 3
+        self._compact_context_threshold = config.compact_context_threshold if config else 50000
+        
+        self._add_message("system", self._format_system_prompt())
+        self._summarizer = SummarizerAgent(llm_client, config=config, verbose=verbose)
     
     def run(self, query: str) -> AgentResponse:
         """Execute the ReAct loop: Reason -> Act -> Observe -> Repeat.
@@ -58,10 +69,12 @@ class ReActAgent(BaseAgent):
             
         Raises:
             MaxIterationsError: If agent doesn't complete within max_iterations
-        """
-        # Reset state and initialize conversation
-        self._reset()
-        self._add_message("system", self._format_system_prompt())
+        """        
+        # Initialize a new ReAct loop and add to history
+        new_loop = ReActLoop(iteration=self._loop_counter)
+        self._loops.append(new_loop)
+        
+        # Add user query (automatically adds to both global messages and current loop)
         self._add_message("user", query)
         
         # Track execution
@@ -69,13 +82,15 @@ class ReActAgent(BaseAgent):
         tools_used = []
         
         # ReAct loop
-        for iteration in range(self._max_iterations):
+        for iteration in range(self._max_iterations):            
             if self._verbose:
                 print(f"\n--- Iteration {iteration + 1} ---")
             
             # Step 1: REASON - Think about what to do next (no tools)
-            reasoning_response = self._reason(self._messages)
+            # Receives full conversation from all loops
+            reasoning_response = self._reason()
             reasoning_text = reasoning_response.content or ""
+            self._current_context_length = reasoning_response.context_length
             
             if self._verbose:
                 print(f"Reasoning: {reasoning_text}")
@@ -87,7 +102,7 @@ class ReActAgent(BaseAgent):
             self._add_message("assistant", 'Thought: ' + reasoning_text)
             
             # Step 2: ACT - Decide whether to use tools or provide final answer
-            action_response = self._decide_action(self._messages)
+            action_response = self._decide_action()
             
             if action_response.has_tool_calls:
                 # Execute requested tools
@@ -114,8 +129,21 @@ class ReActAgent(BaseAgent):
             
             else:
                 # No more tool calls - agent has final answer
+                self._loop_counter += 1  # Increment global loop counter
                 if self._verbose:
                     print(f"Final answer: {action_response.content}")
+                    print(f"Loop counter: {self._loop_counter}, current context length: {self._current_context_length}")
+                
+                # Check if conversation compaction is needed based on thresholds
+                should_compact = (
+                    self._loop_counter >= self._compact_after_loops or
+                    self._current_context_length >= self._compact_context_threshold
+                )
+                
+                if should_compact:
+                    if self._verbose:
+                        print(f"[Compaction triggered: loop_counter={self._loop_counter}, context_length={self._current_context_length}]")
+                    self._compact_conversation()
                 
                 return AgentResponse(
                     answer=action_response.content or "No answer provided",
@@ -129,8 +157,77 @@ class ReActAgent(BaseAgent):
             f"Agent did not complete task in {self._max_iterations} iterations. "
             f"Consider increasing max_iterations or simplifying the query."
         )
+
+    def _compact_conversation(self, loops_to_summarize: int = 1) -> None:
+        """Compact the conversation history, starting from the first loop"""
+        self._summarizer.compact_conversation(self._loops)
+        self._messages = self._build_full_conversation_from_loops()
     
-    def _reason(self, messages: List[Message]) -> LLMResponse:
+    def _add_message(
+        self,
+        role: str,
+        content: str = None,
+        **kwargs
+    ) -> None:
+        """Override to add message to both global history and current loop.
+        
+        Args:
+            role: Message role (system, user, assistant, tool)
+            content: Message content
+            **kwargs: Additional message fields (tool_calls, tool_call_id, etc.)
+        """
+        # Add to global message history (parent implementation)
+        super()._add_message(role, content, **kwargs)
+        
+        # Also add to current loop if one exists
+        current_loop = self._get_current_loop()
+        if current_loop:
+            current_loop.add_message(role, content, **kwargs)
+    
+    def _get_current_loop(self) -> ReActLoop:
+        """Get the current (most recent) ReAct loop.
+        
+        Returns:
+            Current ReActLoop or None if no loops exist
+        """
+        return self._loops[-1] if self._loops else None
+    
+    def _build_full_conversation_from_loops(self) -> List[Message]:
+        """Build the full conversation from all loops.
+        
+        This combines the system message with all messages from all loops
+        to provide complete context for reasoning.
+        
+        Returns:
+            List of all messages across all loops
+        """
+        # Start with system message
+        full_conversation = []
+        if self._messages and self._messages[0].role == "system":
+            full_conversation.append(self._messages[0])
+        
+        # Add all messages from all loops
+        for loop in self._loops:
+            full_conversation.extend(loop.messages)
+        
+        return full_conversation
+    
+    def clear_loop_history(self) -> None:
+        """Clear all loop history.
+        
+        This can be useful to free memory for long-running agents.
+        """
+        self._loops.clear()
+    
+    def get_total_loop_iterations(self) -> int:
+        """Get the total number of loop iterations across the entire conversation.
+        
+        Returns:
+            Total loop counter value
+        """
+        return self._loop_counter
+    
+    def _reason(self) -> LLMResponse:
         """Step 1: Reasoning phase - Think about what to do next (WITHOUT tools).
         
         This is the critical "Think" step in ReAct where the agent reasons
@@ -138,14 +235,11 @@ class ReActAgent(BaseAgent):
         
         Uses the reasoning model for complex, deep thinking.
         
-        Args:
-            messages: Current conversation messages
-            
         Returns:
             LLM response with reasoning (no tool calls)
         """
         # Add a prompt to encourage reasoning
-        reasoning_messages = messages + [
+        reasoning_messages = self._messages + [
             Message(
                 role="user",
                 content="Think step-by-step: What information do you have? What do you still need? What tool calls should call next and in what order?"
@@ -160,24 +254,24 @@ class ReActAgent(BaseAgent):
             reason=True  # Use reasoning model for deep thinking
         )
     
-    def _decide_action(self, messages: List[Message]) -> LLMResponse:
+    def _decide_action(self) -> LLMResponse:
         """Step 2: Action phase - Decide whether to use tools or answer.
         
         After reasoning, the agent decides whether to:
         - Use tools to gather more information
         - Provide a final answer if it has enough information
         
+        Only sends messages from the current ReAct loop (not full conversation history)
+        since tool selection is based on the current thought/reasoning cycle.
         Uses the faster inference model since the reasoning is already done.
         
-        Args:
-            messages: Current conversation messages (includes reasoning)
-            
         Returns:
             LLM response with optional tool calls or final answer
         """
-        # Now enable tools for the action decision (use faster inference model)
+        # Send only current ReAct loop messages for tool decision (use faster inference model)
+        current_loop = self._get_current_loop()
         return self._llm_client.chat(
-            messages=messages,
+            messages=current_loop.get_messages(),
             tools=self._get_tools_schema(),
             tool_choice="auto"  # Let model decide when to use tools
         )

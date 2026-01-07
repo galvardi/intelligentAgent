@@ -30,4 +30,3 @@ class AgentResponse(BaseModel):
                 "iterations": 2
             }
         }
-

@@ -1,5 +1,6 @@
 """LLM client wrapper. currently only OpenAI is supported"""
 
+from ast import Tuple
 import json
 from typing import List, Optional
 from openai import OpenAI
@@ -35,6 +36,7 @@ class LLMClient:
         tools: Optional[List[dict]] = None,
         tool_choice: str = "auto",
         temperature: Optional[float] = None,
+        parallel_tool_calls: bool = True,
         reason: bool = False
     ) -> LLMResponse:
         """Make a chat completion request.
@@ -66,6 +68,7 @@ class LLMClient:
         if tools:
             params["tools"] = tools
             params["tool_choice"] = tool_choice
+            params["parallel_tool_calls"] = parallel_tool_calls
         
         # Make API call
         response = self._client.chat.completions.create(**params)

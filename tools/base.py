@@ -25,17 +25,26 @@ class BaseTool(ABC):
         Returns:
             Dictionary in OpenAI's tool format with function name, description, and parameters.
         """
-        # Get JSON schema from Pydantic model, excluding title to avoid redundancy
+        # Get JSON schema from Pydantic model
         schema = self.args_schema.model_json_schema()
         
-        # Remove title if present (cleaner schema)
+        # Remove Pydantic-specific fields that aren't needed
         schema.pop("title", None)
+        
+        # For strict mode, additionalProperties must be false
+        schema["additionalProperties"] = False
+        
+        # For strict mode, ALL properties must be in the required array
+        # (even those with defaults)
+        if "properties" in schema:
+            schema["required"] = list(schema["properties"].keys())
         
         return {
             "type": "function",
             "function": {
                 "name": self.name,
                 "description": self.description,
+                "strict": True,
                 "parameters": schema
             }
         }

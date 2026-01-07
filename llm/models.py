@@ -13,7 +13,7 @@ class LLMResponse(BaseModel):
     
     content: Optional[str] = Field(None, description="Text content of the response")
     tool_calls: Optional[List[ToolCall]] = Field(None, description="Tool calls requested by the LLM")
-    context_length: int = Field(None, description="number of tokens used in the prompt")
+    context_length: int = Field(0, description="number of tokens used in the prompt")
     finish_reason: str = Field(..., description="Reason the model stopped generating")
     
     @property
@@ -49,7 +49,7 @@ class LLMResponse(BaseModel):
         return cls(
             content=message.content,
             tool_calls=tool_calls,
-            usage=response.usage.prompt_tokens,
+            context_length=response.usage.prompt_tokens if response.usage else 0,
             finish_reason=choice.finish_reason
         )
 

@@ -11,8 +11,10 @@ from rich import print as rprint
 from intelligentAgent.config import AgentConfig
 from intelligentAgent.llm.client import LLMClient
 from intelligentAgent.agents.react import ReActAgent, MaxIterationsError
-from intelligentAgent.tools.examples.calculator import CalculatorTool
-from intelligentAgent.tools.examples.datetime_tool import DateTimeTool
+from intelligentAgent.tools.tools.calculator import CalculatorTool
+from intelligentAgent.tools.tools.datetime_tool import DateTimeTool
+from intelligentAgent.tools.tools.stock_tool import StockTool
+from intelligentAgent.tools.tools.marketaux_tool import MarketauxTool
 
 
 console = Console()
@@ -21,16 +23,22 @@ console = Console()
 def print_banner():
     """Print welcome banner"""
     banner = """
-    # 🤖 Intelligent Agent
+    # 📈 Financial Analysis Agent
     
-    A ReAct agent with chain-of-thought reasoning.
-    Type your questions and watch the agent think through solutions step by step.
+    A ReAct-powered agent for data-driven market insights and stock analysis.
+    Get real-time stock data, financial news, sentiment analysis, and market trends.
+    
+    **Example queries:**
+    - "What's the current price and sentiment for Tesla?"
+    - "Compare how AAPL, MSFT, and GOOGL are performing in the market"
+    - "Is the negative news about [COMPANY] justified by its stock performance?"
     
     **Available commands:**
     - `exit` or `quit` - Exit the program
     - `help` - Show this help message
     - `tools` - List available tools
     - `clear` - Clear the screen
+    - `reset` - Start a new conversation (creates fresh agent)
     """
     console.print(Panel(Markdown(banner), title="Welcome", border_style="cyan"))
 
@@ -44,12 +52,6 @@ def print_help():
     2. **Watch the agent work**: See the reasoning process in real-time (verbose mode)
     3. **Get answers**: The agent will use tools to find accurate information
     
-    ## Examples
-    
-    - "What is 25 * 4 + 100?"
-    - "What time is it?"
-    - "Calculate the square root of 144"
-    - "What is pi times 2?"
     
     ## Tips
     
@@ -80,6 +82,8 @@ def create_agent(verbose: bool = False) -> Optional[ReActAgent]:
         tools = [
             CalculatorTool(),
             DateTimeTool(),
+            StockTool(),
+            MarketauxTool(),
         ]
         
         # Create agent
@@ -139,6 +143,15 @@ def interactive_mode(verbose: bool = False):
             elif query.lower() == "clear":
                 console.clear()
                 print_banner()
+                continue
+            
+            elif query.lower() == "reset":
+                console.print("\n[yellow]Creating new agent and resetting conversation...[/yellow]")
+                agent = create_agent(verbose=verbose)
+                if not agent:
+                    console.print("[red]Failed to create new agent. Exiting...[/red]")
+                    break
+                console.print("[green]✓ New conversation started![/green]")
                 continue
             
             elif not query.strip():

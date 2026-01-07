@@ -34,14 +34,7 @@ The agent provides real-time stock data, financial news, sentiment analysis, and
 
 1. **Clone the repository** (or navigate to the project directory)
 
-2. **Install dependencies**:
-```bash
-pip install -r requirements.txt
-pip install -e .
-python main.py
-```
-
-3. **Set up environment variables**:
+2. **Set up environment variables**:
 Copy the `.env.example` file and rename the copy to `.env` in the `intelligentAgent/` directory. Then, open the new `.env` file and add your actual OpenAI API key:
 
 ```bash
@@ -51,6 +44,19 @@ cp intelligentAgent/.env.example intelligentAgent/.env
 Edit the `.env` file and set:
 ```
 OPENAI_API_KEY=your_openai_api_key_here
+```
+
+3. **Install dependencies**:
+```bash
+required python version at least 3.9 
+
+python3 -m venv venv # if you wish to create a venv
+source venv/bin/activate  # activate venv
+
+pip install --upgrade pip  # you may need to upgrage pip
+pip install -r requirements.txt
+pip install -e .
+python main.py
 ```
 
 **Getting API Keys:**

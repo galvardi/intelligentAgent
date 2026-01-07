@@ -51,7 +51,6 @@ class BaseAgent(ABC):
             for tool in tools:
                 self._tool_registry.register(tool)
     
-    @abstractmethod
     def run(self, query: str) -> AgentResponse:
         """Execute the agent's main loop.
         

@@ -44,4 +44,8 @@ class AgentConfig(BaseSettings):
         ge=1000,
         description="Context length (in tokens) after which to trigger compaction"
     )
+    
+    # API Keys
+    alphavantage_api_key: str = Field(..., description="Alpha Vantage API key for stock data")
+    marketaux_api_key: str = Field(..., description="Marketaux API key for financial news and market data")
 

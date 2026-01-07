@@ -93,13 +93,13 @@ class ReActAgent(BaseAgent):
             self._current_context_length = reasoning_response.context_length
             
             if self._verbose:
-                print(f"Reasoning: {reasoning_text}")
+                print(f"____{reasoning_text}")
             
             # Track the reasoning
             reasoning_trace.append(f"Thought: {reasoning_text}")
             
             # Add reasoning to conversation history
-            self._add_message("assistant", 'Thought: ' + reasoning_text)
+            self._add_message("assistant", reasoning_text)
             
             # Step 2: ACT - Decide whether to use tools or provide final answer
             action_response = self._decide_action()
@@ -107,7 +107,7 @@ class ReActAgent(BaseAgent):
             if action_response.has_tool_calls:
                 # Execute requested tools
                 if self._verbose:
-                    print(f"Tools requested: {[tc.name + ' with arguments: ' + str(tc.arguments) for tc in action_response.tool_calls]}")
+                    print(f"__________Tools requested: {[tc.name + ' with arguments: ' + str(tc.arguments) for tc in action_response.tool_calls]}")
                 
                 results = self._act(action_response.tool_calls)
                 tools_used.extend([tc.name for tc in action_response.tool_calls])
@@ -131,8 +131,7 @@ class ReActAgent(BaseAgent):
                 # No more tool calls - agent has final answer
                 self._loop_counter += 1  # Increment global loop counter
                 if self._verbose:
-                    print(f"Final answer: {action_response.content}")
-                    print(f"Loop counter: {self._loop_counter}, current context length: {self._current_context_length}")
+                    print(f"__________Loop counter: {self._loop_counter}, current context length: {self._current_context_length}")
                 
                 # Check if conversation compaction is needed based on thresholds
                 should_compact = (

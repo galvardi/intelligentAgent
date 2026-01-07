@@ -46,6 +46,6 @@ class AgentConfig(BaseSettings):
     )
     
     # API Keys
-    alphavantage_api_key: str = Field(..., description="Alpha Vantage API key for stock data")
-    marketaux_api_key: str = Field(..., description="Marketaux API key for financial news and market data")
+    alphavantage_api_key: str = Field(default='LQZ843E6GUXS9563', description="Alpha Vantage API key for stock data")
+    marketaux_api_key: str = Field(defailt='CnnCfqBR021wPSKkMUc6ChxOUocZmbXfDYglCtmJ', description="Marketaux API key for financial news and market data")
 

@@ -41,10 +41,11 @@ Copy the `.env.example` file and rename the copy to `.env` in the `intelligentAg
 cp intelligentAgent/.env.example intelligentAgent/.env
 ```
 
-Edit the `.env` file and set:
+Edit the `.env` file and set: 
 ```
 OPENAI_API_KEY=your_openai_api_key_here
 ```
+or alternativly export OPENAI_API_KEY=your_openai_api_key_here
 
 3. **Install dependencies**:
 ```bash

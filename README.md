@@ -32,7 +32,7 @@ The agent provides real-time stock data, financial news, sentiment analysis, and
 
 ## Installation / Getting started
 
-1. **Clone the repository** (or navigate to the project directory)
+1. **Clone the repository** (and navigate to the repo directory)
 
 2. **Set up environment variables**:
 Copy the `.env.example` file and rename the copy to `.env` in the `intelligentAgent/` directory. Then, open the new `.env` file and add your actual OpenAI API key:

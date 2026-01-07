@@ -39,6 +39,8 @@ The agent provides real-time stock data, financial news, sentiment analysis, and
 2. **Install dependencies**:
 ```bash
 pip install -r requirements.txt
+pip install -e .
+python main.py
 ```
 
 3. **Set up environment variables**:
@@ -158,11 +160,6 @@ All configuration is managed via `pydantic-settings` in `config.py`:
 | `COMPACT_CONTEXT_THRESHOLD` | Token threshold for compaction | `50000` |
 
 ## Development
-
-### Running Tests
-```bash
-# Add your test command here when you create tests
-```
 
 ### Code Style
 The project follows:

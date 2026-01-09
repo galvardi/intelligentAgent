@@ -48,13 +48,13 @@ OPENAI_API_KEY=your_openai_api_key_here
 or alternativly export OPENAI_API_KEY=your_openai_api_key_here
 
 3. **Install dependencies**:
-   ### using uv:
-   ```bash
-     uv sync
-     uv run main.py 
-  ```
+### using uv:
+```bash
+  uv sync
+  uv run main.py 
+```
 
-   ### Traditional way using pip:
+### Traditional way using pip:
 ```bash
 required python version at least 3.9 
 
